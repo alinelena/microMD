@@ -1,0 +1,11 @@
+option(WITH_OPENMP "build an OpenMP version" OFF)
+option(WITH_EXTRATIME "activate extra timing information" OFF)
+option(BUILD_TESTING "Build with Testing support" OFF)
+option(WITH_COVERAGE "Build with instrumentation for code coverage" OFF)
+option(WITH_FORCHECK "Build with forcheck for code" OFF)
+option(DOCS "Doxygen Documentation" OFF)
+option(BUILD_SHARED_LIBS "Build with shared libraries" OFF)
+
+cmake_host_system_information(RESULT AH QUERY FQDN)
+set(HOST "${AH}" CACHE STRING "name of the hostname we build on.")
+set(BUILDER "" CACHE STRING "name of the person who built the binary.")

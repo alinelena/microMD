@@ -1,0 +1,14 @@
+title "stupid test"
+
+output ar.output
+config ar.config
+
+field ar.field
+
+rcut 8.5
+healing 1.0
+
+trajectory
+trajname history
+
+finish
