@@ -9,7 +9,9 @@ module m_forces
   use m_particles,  only: particlesType
   use m_potentials, only: ljes,&
                           ljesS,&
-                          ljABc
+                          ljABc, &
+                          GLJ,&
+                          ljfrenkel
   use m_useful,     only: getvdw,&
                           hs
   use m_potentials, only: LJ,LJS,LJAB
@@ -24,7 +26,7 @@ contains
     type(controlType), intent(in)      :: control
 
     integer  :: i, is, j, js, k, l
-    real(rp) :: eng, f(3), ir, r2, rdU, rij(3), si(3)
+    real(rp) :: eng, f(3), ir, r2, U,rdU, rij(3), si(3)
 
     ps%fx = 0.0_rp
     ps%fy = 0.0_rp
@@ -44,14 +46,18 @@ contains
         r2 = sum(rij * rij); ir = 1.0_rp / r2
         select case (ps%vdw (k)%id)
         case (LJ)
-          eng = eng + ljes(ps%vdw(k), r2, rdU)
+          call ljes(ps%vdw(k), r2, U, rdU)
           f = rij * rdU * ir
         case (LJAB)
-          eng = eng + ljabc(ps%vdw(k), r2, rdU)
+          call ljabc(ps%vdw(k), r2, U, rdU)
           f = rij * rdU * ir
         case (LJS)
-          eng = eng + ljesS(ps%vdw(k), r2, control%rc, control%lamda)
+          call ljesS(ps%vdw(k), r2, control%rc, control%lamda,U)
+        case (GLJ)
+          call ljfrenkel(ps%vdw(k), r2, U,rdU)
+          f = rij * rdU * ir
         end select
+        eng = eng + U
         if (i < j) then
           ps%fx(j) = ps%fx(j) - f(1)
           ps%fy(j) = ps%fy(j) - f(2)
@@ -78,7 +84,7 @@ contains
     ps%eeself = sqrt(ps%alpha/pi)*q
   end function self_ewald
 
-  subroutine ewaldForces(ps)
+  subroutine ewaldForcesRealSpace(ps)
     type(particlesType), intent(inout) :: ps
 
     integer  :: i, is, j, js, l
@@ -87,13 +93,13 @@ contains
 
     alpha=0.3_rp
     sa = sqrt(alpha)
-    do i = 1, ps%nGParticles - 1
+    do i = 1, ps%nGParticles
       is = ps%spec(i)
       qa = ps%charge(is)
       si = hs(ps%hi, [ps%x(i), ps%y(i), ps%z(i)])
       f = 0.0_rp
       eng = 0.0_rp
-      do l = i+1, ps%neigh(i)%n
+      do l = 1, ps%neigh(i)%n
         j = ps%neigh(i)%list(l)
         rij = ps%mic(j, si)
         js = ps%spec(j)
@@ -103,7 +109,11 @@ contains
       enddo
       ps%engStress(i)%engElec = eng*ifpi
     enddo
-  end subroutine ewaldForces
+  end subroutine ewaldForcesRealSpace
+
+  subroutine ewaldForcesKSpace(ps)
+    type(particlesType), intent(inout) :: ps
+  end subroutine ewaldForcesKSpace
 
   subroutine long_range_correction(ps,rc)
     type(particlesType), intent(inout) :: ps
@@ -124,6 +134,8 @@ contains
          elrc = 4.0_rp*e*(s**12-3.0_rp*c*rc**6*s**6)/(rc**9*9.0_rp)
         case (LJAB)
         case (LJS)
+        case (GLJ)
+          elrc = 0.0_rp
         end select
         if (i/=j) then
           elrc = elrc * 2.0_rp

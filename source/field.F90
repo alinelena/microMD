@@ -25,7 +25,8 @@ module m_field
   use m_particles,  only: particlesType
   use m_potentials, only: LJ,&
                           LJAB,&
-                          LJS
+                          LJS,&
+                          GLJ
   use m_units,      only: setEnergyUnits
 
   implicit none
@@ -95,7 +96,24 @@ contains
             ps%vdw(k)%param(1:3) = params(1:3)
             ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * engUnits
             ps%vdw(k)%param(2) = ps%vdw(k)%param(2) * engUnits
-
+          case ("glj")
+            ps%vdw(k)%i = i
+            ps%vdw(k)%j = j
+            ps%vdw(k)%id = GLJ
+            ps%vdw(k)%np = 4
+            ps%vdw(k)%pot = trim(pot)
+            ps%vdw(k)%fpot = 'Frenkel-Lennard-Jones ε,σ,rc'
+            allocate (ps%vdw(k)%param(4))
+            ps%vdw(k)%param(1:3) = params(1:3)
+            ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * engUnits
+            block
+               real(rp) :: x
+               ps%vdw(k)%param(3) = ps%vdw(k)%param(3)**2
+               ps%vdw(k)%param(2) = ps%vdw(k)%param(2)**2
+               x = (ps%vdw(k)%param(3)/ps%vdw(k)%param(2))
+               ps%vdw(k)%param(4) = 2.0_rp*x*(1.5_rp/(x-1.0_rp))**3
+               ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * ps%vdw(k)%param(4)
+            end block
           case default
             call error(__FILE__, __LINE__, -123, &
                        "unknown potential "//trim(pot))

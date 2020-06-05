@@ -1,15 +1,17 @@
-!    Copyright (c) 2016-2016 Alin Marin Elena <alinm.elena@gmail.com>
+!ke    Copyright (c) 2016-2016 Alin Marin Elena <alinm.elena@gmail.com>
 !    The MIT License http://opensource.org/licenses/MIT
 module m_particles
   use m_Constants,  only: elLen,&
-                          ip,&
-                          k_ml,&
-                          k_mw,&
-                          rp
+    ip,&
+    k_ml,&
+    k_mw,&
+    rp,&
+    kB
   use m_io,         only: ioType
   use m_potentials, only: vdwType
   use m_useful,     only: hs,&
-                          isInSet
+    isInSet,&
+    gaussian
 
   implicit none
   private
@@ -72,6 +74,8 @@ module m_particles
     procedure, public                 :: centreOfMass
     procedure, public                 :: mic
     procedure, public                 :: writeTrajectory
+    procedure, public                 :: init_velocities
+    procedure, public                 :: scale_velocities
     final                             :: cleanup
 
   end type particlesType
@@ -112,7 +116,7 @@ contains
   end subroutine cleanup
 
   subroutine statsOnConfig(ps, io)
-    class(particlesType)        :: ps
+  class(particlesType)        :: ps
     type(ioType), intent(in)    :: io
 
     integer :: i, k
@@ -134,7 +138,7 @@ contains
   end subroutine statsOnConfig
 
   function centreOfMass(ps)
-    class(particlesType) :: ps
+  class(particlesType) :: ps
     real(rp)             :: centreOfMass(3)
 
     integer  :: i, sp
@@ -151,7 +155,7 @@ contains
   end function centreOfMass
 
   real(rp) function getMass(ps)
-    class(particlesType) :: ps
+  class(particlesType) :: ps
 
     integer  :: i, sp
     real(rp) :: m
@@ -166,7 +170,7 @@ contains
   end function getMass
 
   real(rp) function getCharge(ps)
-    class(particlesType) :: ps
+  class(particlesType) :: ps
 
     integer  :: i, sp
     real(rp) :: c
@@ -181,7 +185,7 @@ contains
   end function getCharge
 
   function mic(ps, j, si)
-    class(particlesType)    :: ps
+  class(particlesType)    :: ps
     integer, intent(in)     :: j
     real(rp), intent(in)    :: si(3)
     real(rp), dimension(3)  :: mic
@@ -195,17 +199,17 @@ contains
   end function mic
 
   real(rp) function volume(ps)
-    class(particlesType) :: ps
+  class(particlesType) :: ps
 
     volume = ps%h(1, 1) * (ps%h(2, 2) * ps%h(3, 3) - ps%h(2, 3) * ps%h(3, 2)) - &
-             ps%h(1, 2) * (ps%h(2, 1) * ps%h(3, 3) - ps%h(2, 3) * ps%h(3, 1)) + &
-             ps%h(1, 3) * (ps%h(2, 1) * ps%h(3, 2) - ps%h(2, 2) * ps%h(3, 1))
+      ps%h(1, 2) * (ps%h(2, 1) * ps%h(3, 3) - ps%h(2, 3) * ps%h(3, 1)) + &
+      ps%h(1, 3) * (ps%h(2, 1) * ps%h(3, 2) - ps%h(2, 2) * ps%h(3, 1))
     ps%Vol = volume
 
   end function volume
 
   subroutine statsOnField(ps, io)
-    class(particlesType)        :: ps
+  class(particlesType)        :: ps
     type(ioType), intent(in)    :: io
 
     integer :: i
@@ -218,7 +222,7 @@ contains
     write (io%uout, '(a)') "Two body interactions:"
     write (io%uout, '(a8,a8,a5,a21,a36)') " A|", "B|", repeat(" ", 5), "Potential|", "Params|"
     do i = 1, size(ps%vdw)
-        write (io%uout, '(a8,a8,a5,a24,1x,4(g11.4,1x))') ps%species(ps%vdw(i)%i), ps%species(ps%vdw(i)%j), &
+      write (io%uout, '(a8,a8,a5,a24,1x,4(g11.4,1x))') ps%species(ps%vdw(i)%i), ps%species(ps%vdw(i)%j), &
         trim(ps%vdw(i)%pot), trim(ps%vdw(i)%fpot), ps%vdw(i)%param(1:ps%vdw(i)%np)
     enddo
     write (io%uout, '(a,f16.8)') "Mass: ", ps%getMass()
@@ -258,20 +262,22 @@ contains
     deallocate (stmp, istmp)
   end subroutine arrayToSet
 
-   subroutine energyKinetic(ps)
-     class(particlesType), intent(inout) :: ps
+  subroutine energyKinetic(ps)
+  class(particlesType), intent(inout) :: ps
 
     integer :: i
 
     ps%ke = 0.0_rp
     do i =1, ps%nGParticles
-       ps%ke = ps%ke + ps%mass(i)*(ps%vx(i)**2 + ps%vy(i)**2 + ps%vz(i)**2)
+      ps%ke = ps%ke + ps%mass(ps%spec(i))*(ps%vx(i)**2 + ps%vy(i)**2 + ps%vz(i)**2)
     end do
+    ps%temperature = ps%ke/(3.0_rp*kB*ps%nGParticles)
     ps%ke = 0.5_rp * ps%ke
-   end subroutine energyKinetic
 
-   subroutine energyPair(ps)
-     type(particlesType), intent(inout) :: ps
+  end subroutine energyKinetic
+
+  subroutine energyPair(ps)
+    type(particlesType), intent(inout) :: ps
 
     integer :: i
     ps%engPair = 0.0_rp
@@ -293,18 +299,18 @@ contains
 
   end subroutine energyElectrostatics
 
-  real(rp) function energy(ps)
-    class(particlesType), intent(inout) :: ps
+  subroutine energy(ps)
+  class(particlesType), intent(inout) :: ps
 
     call energyPair(ps)
     call energyElectrostatics(ps)
     call ps%energyKinetic()
-    energy = ps%engPair + ps%engElec + ps%englrc + ps%ke
+    ps%eng = ps%engPair + ps%engElec + ps%englrc + ps%ke
 
-  end function energy
+  end subroutine energy
 
   subroutine writeTrajectory(ps, io, nt, t, dt, level, isFirst)
-    class(particlesType)             :: ps
+  class(particlesType)             :: ps
     type(ioType), intent(in)         :: io
     integer, intent(in)              :: nt
     real(rp), intent(in)             :: t, dt
@@ -342,4 +348,65 @@ contains
       if (lev > 1) write (io%uTraj, *) ps%fx(i), ps%fy(i), ps%fz(i)
     enddo
   end subroutine writeTrajectory
+
+
+  subroutine scale_velocities(ps,T)
+  class(particlesType)             :: ps
+    real(rp)                         :: T
+
+
+    real(rp) :: et(3)
+
+    integer :: i,j
+
+    et = 0.0_rp
+    do i =1,ps%nGParticles
+
+      j = ps%spec(i)
+      et(1) = et(1) + ps%mass(j)*ps%vx(i)**2
+      et(2) = et(2) + ps%mass(j)*ps%vy(i)**2
+      et(3) = et(3) + ps%mass(j)*ps%vz(i)**2
+    end do
+    et = et / (kB*ps%nGParticles)
+    et = sqrt(T/et)
+    do i =1,ps%nGParticles
+      ps%vx(i) = ps%vx(i) * et(1)
+      ps%vy(i) = ps%vy(i) * et(2)
+      ps%vz(i) = ps%vz(i) * et(3)
+    end do
+
+  end subroutine scale_velocities
+
+  subroutine  init_velocities(ps,T)
+  class(particlesType)             :: ps
+    real(rp)                         :: T
+
+    real(rp),allocatable :: x(:)
+    integer :: i,j
+    real(rp) :: vc(3),f,mt
+
+    allocate(x(3*ps%nGParticles))
+
+    vc = 0.0_rp
+    mt = 0.0_rp
+    call gaussian(x)
+    do i = 1 , ps%nGParticles
+      j = ps%spec(i)
+      f = sqrt(kb*T/ps%mass(j))
+      ps%vx(i) = f*x(3*(i-1)+1)
+      ps%vy(i) = f*x(3*(i-1)+2)
+      ps%vz(i) = f*x(3*(i-1)+3)
+      vc = vc + ps%mass(j)*[ps%vx(i), ps%vy(i), ps%vz(i)]
+      mt = mt + ps%mass(j)
+    end do
+    vc =vc / mt / ps%nGParticles
+    do i = 1 , ps%nGParticles
+      ps%vx(i) = ps%vx(i) - vc(1)
+      ps%vy(i) = ps%vy(i) - vc(2)
+      ps%vz(i) = ps%vz(i) - vc(3)
+    end do
+    deallocate(x)
+    call ps%scale_velocities(T)
+  end subroutine init_velocities
+
 end module m_particles

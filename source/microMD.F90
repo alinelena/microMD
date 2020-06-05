@@ -6,7 +6,8 @@ program microMD
                           k_ml,&
                           rp
   use m_Useful,     only: DateAndTime,&
-                          compilerInfo
+                          compilerInfo,&
+                          init_random
   use m_config,     only: readConfig
   use m_control,    only: controlType,&
                           readControl
@@ -38,6 +39,7 @@ program microMD
   call readControl(io, control)
   call compilerInfo(io%uout)
   write (io%uout, '(a)') trim(dummy)
+  call init_random(control%seed)
   call readConfig(particles, io)
   call particles%summary(io)
   call readField(io, particles)
@@ -56,11 +58,13 @@ program microMD
     if (io%isTraj) then
       call particles%writeTrajectory(io, 0, 0.0_rp, 0.0_rp, isFirst=.true., level=2)
     endif
-    fmte = '('//"i8,1x,4(es13.6,1x)"//')'
-    fmts = '('//"a8,1x,4(a13,1x)"//')'
+    fmte = '('//"i8,1x,5(es13.6,1x)"//')'
+    fmts = '('//"a8,1x,5(a13,1x)"//')'
 
-    write (io%utimeser, fmt=trim(fmts)) "Timestep","Time", "TotEng", "Epair","E_tail"
-    write (io%utimeser, fmt=trim(fmte)) 0,control%time, particles%energy() / engUnits, &
+    write (io%utimeser, fmt=trim(fmts)) "Timestep","Time", "TotEng", "T", "Epair","E_tail"
+    call particles%init_velocities(control%temperature)
+    call particles%energy()
+    write (io%utimeser, fmt=trim(fmte)) 0,control%time, particles%eng / engUnits, particles%temperature, &
       particles%engPair / engUnits, particles%englrc / engUnits
     do t = 1, control%steps
       control%time = control%time + control%timestep
@@ -70,7 +74,8 @@ program microMD
       call computeForces(particles, control)
       call nve_update_velocity(particles, control%timestep)
       if ( (t==1) .or.(mod(t,control%freq) == 0) ) then
-        write (io%utimeser, fmt=trim(fmte)) t,control%time, particles%energy() / engUnits, &
+        call particles%energy()
+        write (io%utimeser, fmt=trim(fmte)) t,control%time, particles%eng / engUnits, particles%temperature, &
           particles%engPair / engUnits, particles%englrc / engUnits
       end if
       if (io%isTraj) then

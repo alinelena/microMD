@@ -38,6 +38,7 @@ module m_control
     real(rp) :: time = 0.0_rp
     integer  :: step = 0
     integer  :: freq
+    integer  :: seed
   end type controlType
 
   public :: readControl
@@ -77,7 +78,7 @@ contains
     id = io%udeb
     io%outputFile = getString(id, "output", "OUTPUT", .true.)
     io%trajectoryFile = getString(id, "trajname", "HISTORY", .true.)
-    io%stdout = getLogical(id, "l_scr", .false.)
+    io%stdout = getLogical(id, "stdout", .false.)
     io%timesFile = getString(id, "stats", "stats.times", .true.)
     io%isTraj = getLogical(id, "trajectory", .false.)
     call setIO(io)
@@ -87,6 +88,7 @@ contains
     io%fieldFile = getString(id, "field", "FIELD", .true.)
     control%temperature = getReal(id, "temperature", 298.0_rp)
     control%steps = getInteger(id, "steps", 42)
+    control%seed = getInteger(id, "seed", 13)
     control%rc = getReal(id, "rcut", 12.0_rp)
     control%lamda = getReal(id, "healing", 1.0_rp)
     control%delta = getReal(id, "skin", 3.5_rp)

@@ -20,5 +20,6 @@ module m_Constants
   real(rp), parameter, public :: fpi = 4.0_rp * pi
   real(rp), parameter, public :: tpi = 2.0_rp * pi
   real(rp), parameter, public :: ifpi = 0.25_rp / pi
+  real(rp), parameter, public :: kB = 8.31451115e-1_rp
 end module m_Constants
 
