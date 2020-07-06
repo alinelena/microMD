@@ -23,10 +23,9 @@ module m_field
                           isInSet
   use m_io,         only: ioType
   use m_particles,  only: particlesType
-  use m_potentials, only: ljs,&
+  use m_potentials, only: ljab,&
                           ljf,&
-                          ljab,&
-                          ljsec,&
+                          ljs,&
                           ljse
   use m_units,      only: setEnergyUnits
 
@@ -67,21 +66,21 @@ contains
           k = getVdw(i, j, ps%nSpecies)
           select case (trim (pot))
           case ("lj")
-            allocate(ljse::ps%pots(k)%h)
+            allocate (ljse::ps%pots(k)%h)
             params(1) = params(1) * engUnits
-            call ps%pots(k)%h%init(params(1:2),i,j,k)
+            call ps%pots(k)%h%init(params(1:2), i, j, k)
           case ("ljs")
-            allocate(ljs::ps%pots(k)%h)
+            allocate (ljs::ps%pots(k)%h)
             params(1) = params(1) * engUnits
-            call ps%pots(k)%h%init(params(1:2),i,j,k)
+            call ps%pots(k)%h%init(params(1:2), i, j, k)
           case ("ljAB")
-            allocate(ljab::ps%pots(k)%h)
+            allocate (ljab::ps%pots(k)%h)
             params(1:2) = params(1:2) * engUnits
-            call ps%pots(k)%h%init(params(1:2),i,j,k)
+            call ps%pots(k)%h%init(params(1:2), i, j, k)
           case ("glj")
-            allocate(ljf::ps%pots(k)%h)
+            allocate (ljf::ps%pots(k)%h)
             params(1) = params(1) * engUnits
-            call ps%pots(k)%h%init(params(1:3),i,j,k)
+            call ps%pots(k)%h%init(params(1:3), i, j, k)
           case default
             call error(__FILE__, __LINE__, -123, &
                        "unknown potential "//trim(pot))
