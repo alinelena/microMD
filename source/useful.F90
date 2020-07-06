@@ -46,7 +46,8 @@ contains
   subroutine compilerInfo(io)
     integer, intent(inout) :: io
 
-    character(len=k_ml*10) :: copt = compiler_options()
+    character(len=k_ml*10) :: copt
+    copt = compiler_options()
 
     write (io, '(5a)') 'This file was compiled by ', &
       compiler_version(), ' using the options ', trim(copt)
