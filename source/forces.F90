@@ -7,14 +7,8 @@ module m_forces
                           pi
   use m_control,    only: controlType
   use m_particles,  only: particlesType
-  use m_potentials, only: ljes,&
-                          ljesS,&
-                          ljABc, &
-                          GLJ,&
-                          ljfrenkel
   use m_useful,     only: getvdw,&
                           hs
-  use m_potentials, only: LJ,LJS,LJAB
   implicit none
   private
   public :: computeForces
@@ -44,19 +38,8 @@ contains
         js = ps%spec(j)
         k = getVdw(is, js, ps%nSpecies)
         r2 = sum(rij * rij); ir = 1.0_rp / r2
-        select case (ps%vdw (k)%id)
-        case (LJ)
-          call ljes(ps%vdw(k), r2, U, rdU)
+          call ps%pots(k)%h%pot(r2, U, rdU)
           f = rij * rdU * ir
-        case (LJAB)
-          call ljabc(ps%vdw(k), r2, U, rdU)
-          f = rij * rdU * ir
-        case (LJS)
-          call ljesS(ps%vdw(k), r2, control%rc, control%lamda,U)
-        case (GLJ)
-          call ljfrenkel(ps%vdw(k), r2, U,rdU)
-          f = rij * rdU * ir
-        end select
         eng = eng + U
         if (i < j) then
           ps%fx(j) = ps%fx(j) - f(1)
@@ -120,23 +103,13 @@ contains
     real(rp), intent(in) ::  rc
 
     integer :: i,j,k
-    real(rp) :: e,s,c,elrc
+    real(rp) :: e,s,c,elrc,delrc
 
     ps%englrc = 0.0_rp
     do i = 1, ps%nSpecies
         do j = 1,i
-          k = getVdw(i, j, ps%nSpecies)
-        select case (ps%vdw (k)%id)
-        case (LJ)
-         e = ps%vdw(k)%param(1)
-         s = ps%vdw(k)%param(2)
-         c = ps%vdw(k)%param(3)
-         elrc = 4.0_rp*e*(s**12-3.0_rp*c*rc**6*s**6)/(rc**9*9.0_rp)
-        case (LJAB)
-        case (LJS)
-        case (GLJ)
-          elrc = 0.0_rp
-        end select
+        k = getVdw(i, j, ps%nSpecies)
+        call ps%pots(k)%h%lrc(rc,elrc,delrc)
         if (i/=j) then
           elrc = elrc * 2.0_rp
         end if

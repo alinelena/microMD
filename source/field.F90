@@ -23,10 +23,11 @@ module m_field
                           isInSet
   use m_io,         only: ioType
   use m_particles,  only: particlesType
-  use m_potentials, only: LJ,&
-                          LJAB,&
-                          LJS,&
-                          GLJ
+  use m_potentials, only: ljs,&
+                          ljf,&
+                          ljab,&
+                          ljsec,&
+                          ljse
   use m_units,      only: setEnergyUnits
 
   implicit none
@@ -66,54 +67,21 @@ contains
           k = getVdw(i, j, ps%nSpecies)
           select case (trim (pot))
           case ("lj")
-            ps%vdw(k)%i = i
-            ps%vdw(k)%j = j
-            ps%vdw(k)%id = LJ
-            ps%vdw(k)%np = 3
-            ps%vdw(k)%pot = trim(pot)
-            ps%vdw(k)%fpot = 'Lennard-Jones ε,σ,c'
-            allocate (ps%vdw(k)%param(3))
-            ps%vdw(k)%param(1:3) = params(1:3)
-            ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * engUnits
+            allocate(ljse::ps%pots(k)%h)
+            params(1) = params(1) * engUnits
+            call ps%pots(k)%h%init(params(1:2),i,j,k)
           case ("ljs")
-            ps%vdw(k)%i = i
-            ps%vdw(k)%j = j
-            ps%vdw(k)%id = LJS
-            ps%vdw(k)%np = 3
-            ps%vdw(k)%pot = trim(pot)
-            ps%vdw(k)%fpot = 'Lennard-Jones ε,σ,c smoothed'
-            allocate (ps%vdw(k)%param(3))
-            ps%vdw(k)%param(1:3) = params(1:3)
-            ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * engUnits
+            allocate(ljs::ps%pots(k)%h)
+            params(1) = params(1) * engUnits
+            call ps%pots(k)%h%init(params(1:2),i,j,k)
           case ("ljAB")
-            ps%vdw(k)%i = i
-            ps%vdw(k)%j = j
-            ps%vdw(k)%id = LJAB
-            ps%vdw(k)%np = 3
-            ps%vdw(k)%pot = trim(pot)
-            ps%vdw(k)%fpot = 'Lennard-Jones ε,σ,c smoothed'
-            allocate (ps%vdw(k)%param(3))
-            ps%vdw(k)%param(1:3) = params(1:3)
-            ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * engUnits
-            ps%vdw(k)%param(2) = ps%vdw(k)%param(2) * engUnits
+            allocate(ljab::ps%pots(k)%h)
+            params(1:2) = params(1:2) * engUnits
+            call ps%pots(k)%h%init(params(1:2),i,j,k)
           case ("glj")
-            ps%vdw(k)%i = i
-            ps%vdw(k)%j = j
-            ps%vdw(k)%id = GLJ
-            ps%vdw(k)%np = 4
-            ps%vdw(k)%pot = trim(pot)
-            ps%vdw(k)%fpot = 'Frenkel-Lennard-Jones ε,σ,rc'
-            allocate (ps%vdw(k)%param(4))
-            ps%vdw(k)%param(1:3) = params(1:3)
-            ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * engUnits
-            block
-               real(rp) :: x
-               ps%vdw(k)%param(3) = ps%vdw(k)%param(3)**2
-               ps%vdw(k)%param(2) = ps%vdw(k)%param(2)**2
-               x = (ps%vdw(k)%param(3)/ps%vdw(k)%param(2))
-               ps%vdw(k)%param(4) = 2.0_rp*x*(1.5_rp/(x-1.0_rp))**3
-               ps%vdw(k)%param(1) = ps%vdw(k)%param(1) * ps%vdw(k)%param(4)
-            end block
+            allocate(ljf::ps%pots(k)%h)
+            params(1) = params(1) * engUnits
+            call ps%pots(k)%h%init(params(1:3),i,j,k)
           case default
             call error(__FILE__, __LINE__, -123, &
                        "unknown potential "//trim(pot))

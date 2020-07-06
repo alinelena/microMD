@@ -5,43 +5,220 @@ module m_potentials
                          rp
 
   implicit none
+
   private
   integer, parameter, public :: LJ = 1
-  integer, parameter, public :: LJAB = 2
-  integer, parameter, public :: LJS = 3
+  integer, parameter, public :: LJ_AB = 2
+  integer, parameter, public :: LJ_S = 3
   integer, parameter, public :: GLJ = 4
+  integer, parameter, public :: LJ_C = 5
 
-  type, public :: vdwType
-    integer :: i = 0, j = 0, id = 0, np = 0
-    character(len=k_mw) :: pot = ''
-    character(len=k_mw) :: fpot = ''
-    real(rp), allocatable :: param(:)
-  end type vdwType
-  public :: ljes, ljesS, ljABc, ljfrenkel
-contains
+  character(len=*), parameter :: pot_labels(5)=[" Lennard Jones sig-eps",&
+                                             "      Lennard Jones AB",&
+                                             "  Lennard Jones smooth",&
+                                             " Lennard Jones Frenkel",&
+                                             "Lennard-Jones Cehesive"]
+
+ type, abstract, public :: interaction
+    integer :: j, i, id
+  contains
+    procedure(initialisation), deferred :: init
+    procedure(potential), deferred :: pot
+    procedure(lrc), deferred :: lrc
+  end type
+
+  abstract interface
+    subroutine initialisation(t, p, i, j, id)
+      import interaction, rp
+      class(interaction), intent(inout) :: t
+      real(rp), intent(in) :: p(:)
+      integer, intent(in) :: i,j,id
+
+    end subroutine initialisation
+
+    subroutine potential(t, r2, U, rdU)
+      import interaction, rp
+      class(interaction), intent(inout) :: t
+      real(rp), intent(in) :: r2
+      real(rp), intent(out) :: U, rdU
+    end subroutine potential
+
+    subroutine lrc(t, rc, u, du)
+      import interaction, rp
+      class(interaction), intent(inout) :: t
+      real(rp), intent(in) :: rc
+      real(rp), intent(out) :: U, dU
+    end subroutine lrc
+  end interface
+
+  type, public :: pot_holder
+    class(interaction), allocatable :: h
+  end type
+
+  type, extends(interaction), public :: ljse
+    real(rp) :: sig, eps
+  contains
+    procedure :: init => ljse_init
+    procedure :: pot => ljse_i
+    procedure :: lrc => ljse_lrc
+  end type
+
+  type, extends(interaction), public :: ljAB
+    real(rp) :: a, b
+  contains
+    procedure :: init => ljab_init
+    procedure :: pot => ljab_i
+    procedure :: lrc => ljab_lrc
+  end type
+
+  type, extends(interaction), public :: ljsec
+    real(rp) :: sig, eps, c
+  contains
+    procedure :: init => ljsec_init
+    procedure :: pot => ljsec_i
+    procedure :: lrc => ljsec_lrc
+  end type
+
+  type, extends(interaction), public :: ljf
+    real(rp) :: sig, eps, rcut2
+  contains
+    procedure :: init => ljf_init
+    procedure :: pot => ljf_i
+    procedure :: lrc => ljf_lrc
+  end type
+
+  type, extends(interaction), public :: ljs
+    real(rp) :: sig, eps, rc,l
+  contains
+    procedure :: init => ljs_init
+    procedure :: pot => ljs_i
+    procedure :: lrc => ljs_lrc
+  end type
+
+  contains
+
+    subroutine ljse_init(t, p, i,j,id)
+    class(ljse), intent(inout) :: t
+    real(rp), intent(in)       :: p(:)
+      integer, intent(in) :: i,j,id
+
+    t%eps = p(1)
+    t%sig = p(2)
+    t%i = i
+    t%j = j
+    t%id = id
+  end subroutine ljse_init
+
+  pure subroutine ljse_i(t, r2, U, rdU)
+    class(ljse), intent(inout) :: t
+    real(rp), intent(in)       :: r2
+    real(rp), intent(out)      :: U, rdU
+
+    real(rp) :: s12, s6
+
+    s6 = t%sig * t%sig / r2; s6 = s6 * s6 * s6
+    s12 = s6 * s6
+    U = 4.0_rp * t%eps * (s12 - s6)
+    rdU = 48.0_rp * t%eps * (s12 - 0.5_rp * s6)
+
+  end subroutine ljse_i
+
+  pure subroutine ljse_lrc(t, rc, U, dU)
+    class(ljse), intent(inout) :: t
+    real(rp), intent(in)       :: rc
+    real(rp), intent(out)      :: U, dU
+
+    U = 4.0_rp*T%eps*(t%sig**12-3.0_rp*rc**6*t%sig**6)/(rc**9*9.0_rp)
+    dU = 0.0_rp
+
+  end subroutine ljse_lrc
+
+  pure subroutine ljsec_init(t, p, i, j,id)
+    class(ljsec), intent(inout) :: t
+    real(rp), intent(in)      :: p(:)
+    integer, intent(in)       :: i,j,id
+
+    t%eps = p(1)
+    t%sig = p(2)
+    t%c = p(3)
+    t%i = i
+    t%j = j
+    t%id = id
+  end subroutine ljsec_init
+
+  pure subroutine ljsec_i(t, r2, U, rdU)
+    class(ljsec), intent(inout) :: t
+    real(rp), intent(in)       :: r2
+    real(rp), intent(out)      :: U, rdU
+
+    real(rp) :: s12, s6
+
+    s6 = t%sig * t%sig / r2; s6 = s6 * s6 * s6
+    s12 = s6 * s6
+    U = 4.0_rp * t%eps * (s12 - t%c*s6)
+    rdU = 48.0_rp * t%eps * (s12 - 0.5_rp * t%c* s6)
+
+  end subroutine ljsec_i
+
+  pure subroutine ljsec_lrc(t, rc, U, dU)
+    class(ljsec), intent(inout) :: t
+    real(rp), intent(in)       :: rc
+    real(rp), intent(out)      :: U, dU
+
+    U = 4.0_rp*T%eps*(t%sig**12-3.0_rp*t%c*rc**6*t%sig**6)/(rc**9*9.0_rp)
+    dU = 0.0_rp
+
+  end subroutine ljsec_lrc
 
 
-  pure subroutine ljfrenkel(vdw,r2,energy,rdU)
-    type(vdwType), intent(in)    :: vdw
-    real(rp), intent(in)         :: r2
-    real(rp), intent(out)        :: energy,rdU
 
-    real(rp) :: ir, e,s2,rc2,rct,st
 
-    rc2 = vdw%param(3)
-    if (r2>rc2) then
-      energy = 0.0_rp
+
+  pure subroutine ljf_init(t, p, i, j,id)
+    class(ljf), intent(inout) :: t
+    real(rp), intent(in)      :: p(:)
+    integer, intent(in)       :: i,j,id
+
+    real(rp) :: x
+
+    t%sig = p(2)*p(2)
+    t%rcut2 = p(3)*p(3)
+    x = (t%rcut2/t%sig)
+    t%eps = p(1) * 2.0_rp*x*(1.5_rp/(x-1.0_rp))**3
+    t%i = i
+    t%j = j
+    t%id = id
+  end subroutine ljf_init
+
+  pure subroutine ljf_i(t, r2, U, rdU)
+    class(ljf), intent(inout) :: t
+    real(rp), intent(in)      :: r2
+    real(rp), intent(out)     :: U, rdU
+
+    real(rp) :: ir, rct, st
+
+    if (r2 > t%rcut2) then
+      U = 0.0_rp
       rdU = 0.0_rp
     else
-      e = vdw%param(1)
-      s2 = vdw%param(2)
-      ir = 1.0_rp/r2
-      st = s2*ir
-      rct = rc2*ir
-      energy = e*(st-1.0)*(rct-1.0)**2
-      rdU = 4.0*e*rct*(rct-1.0)*(st-1.0)+2.0*e*(rct-1.0)**2*st
+      ir = 1.0_rp / r2
+      st = t%sig * t%sig * ir
+      rct = t%rcut2 * ir
+      U = t%eps * (st - 1.0_rp) * (rct - 1.0_rp)**2
+      rdU = 4.0_rp * t%eps * rct * (rct - 1.0_rp) * (st - 1.0_rp) + 2.0_rp * t%eps * (rct - 1.0_rp)**2 * st
     end if
-  end subroutine ljfrenkel
+  end subroutine ljf_i
+
+  pure subroutine ljf_lrc(t, rc, U, dU)
+    class(ljf), intent(inout) :: t
+    real(rp), intent(in)       :: rc
+    real(rp), intent(out)      :: U, dU
+
+    U = 0.0_rp
+    dU = 0.0_rp
+
+  end subroutine ljf_lrc
+
 ! watanabe, reinhardt, 1990
   pure real(rp) function Sr(r, rc, l) result(S)
     real(rp), intent(in)    :: r, rc, l
@@ -58,54 +235,80 @@ contains
     endif
   end function Sr
 
-  pure subroutine ljABc(vdw, r2, U, rdU)
-    type(vdwType), intent(in)    :: vdw
+    subroutine ljab_init(t, p, i,j,id)
+    class(ljab), intent(inout) :: t
+    real(rp), intent(in)       :: p(:)
+      integer, intent(in) :: i,j,id
+
+    t%a = p(1)
+    t%b = p(2)
+    t%i = i
+    t%j = j
+    t%id = id
+  end subroutine ljab_init
+
+
+  pure subroutine ljAB_i(t, r2, U, rdU)
+    class(ljAB), intent(inout)    :: t
     real(rp), intent(in)         :: r2
     real(rp), intent(out)        :: U, rdU
 
-    real(rp) :: a, b, c, s12, s6
+    real(rp) ::  s12, s6
 
-    a = vdw%param(1)
-    b = vdw%param(2)
-    c = vdw%param(3)
     s6 = 1.0_rp / r2; s6 = s6 * s6 * s6
     s12 = s6 * s6
 
-    U = a * s12 - b * c * s6
-    rdU = -12.0_rp * (a * s12 - 0.5_rp * c * b * s6)
+    U = t%a * s12 - t%b * s6
+    rdU = -12.0_rp * (t%a * s12 - 0.5_rp * t%b * s6)
 
-  end subroutine ljABc
+  end subroutine ljAB_i
 
-  pure subroutine ljes(vdw, r2, U, rdU)
-    type(vdwType), intent(in)    :: vdw
+  pure subroutine ljAB_lrc(t, rc, U, dU)
+    class(ljAB), intent(inout) :: t
+    real(rp), intent(in)       :: rc
+    real(rp), intent(out)      :: U, dU
+
+    U = 0.0_rp
+    dU = 0.0_rp
+
+  end subroutine ljAB_lrc
+
+    subroutine ljs_init(t, p, i,j,id)
+    class(ljs), intent(inout) :: t
+    real(rp), intent(in)       :: p(:)
+      integer, intent(in) :: i,j,id
+
+    t%eps = p(1)
+
+    t%sig = p(2)
+    t%rc = p(3)
+    t%l  = p(4)
+    t%i = i
+    t%j = j
+    t%id = id
+  end subroutine ljs_init
+
+  pure subroutine ljs_i(t, r2, U, rdU)
+    class(ljs), intent(inout)    :: t
     real(rp), intent(in)         :: r2
-    real(rp), intent(out)        :: U, rdU
+    real(rp), intent(out)        :: U,rdU
 
-    real(rp) :: c, e, s, s12, s6
+    real(rp) :: s, s6
 
-    e = vdw%param(1)
-    s = vdw%param(2)
-    c = vdw%param(3)
 
-    s6 = s * s / r2; s6 = s6 * s6 * s6
-    s12 = s6 * s6
-    U = 4.0_rp * e * (s12 - c * s6)
-    rdU = 48.0_rp * e * (s12 - 0.5_rp * c * s6)
+    s6 = t%sig * t%sig / r2; s6 = s6 * s6 * s6
+    U = 4.0_rp * t%eps * (s6 * s6 - s6) * Sr(sqrt(r2), t%rc, t%l)
+    rdU = 0.0_rp
+  end subroutine ljs_i
 
-  end subroutine ljes
+  pure subroutine ljs_lrc(t, rc, U, dU)
+    class(ljs), intent(inout) :: t
+    real(rp), intent(in)       :: rc
+    real(rp), intent(out)      :: U, dU
 
-  pure subroutine ljesS(vdw, r2, rc, l, U)
-    type(vdwType), intent(in)    :: vdw
-    real(rp), intent(in)         :: r2, rc, l
-    real(rp), intent(out)        :: U
+    U = 0.0_rp
+    dU = 0.0_rp
 
-    real(rp) :: c, e, s, s6
+  end subroutine ljs_lrc
 
-    e = vdw%param(1)
-    s = vdw%param(2)
-    c = vdw%param(3)
-
-    s6 = s * s / r2; s6 = s6 * s6 * s6
-    U = 4.0_rp * e * (s6 * s6 - c * s6) * Sr(sqrt(r2), rc, l)
-  end subroutine ljesS
 end module m_potentials

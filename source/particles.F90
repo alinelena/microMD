@@ -8,7 +8,7 @@ module m_particles
     rp,&
     kB
   use m_io,         only: ioType
-  use m_potentials, only: vdwType
+  use m_potentials, only: pot_holder
   use m_useful,     only: hs,&
     isInSet,&
     gaussian
@@ -43,9 +43,9 @@ module m_particles
     real(rp), allocatable             :: charge(:) ! charge of species
     real(rp), allocatable             :: colour(:) ! for nemd
     integer, allocatable              :: isp(:) ! count of each specie in the configuration
-    type(vdwType), allocatable        :: vdw(:)
     type(neighType), allocatable      :: neigh(:) ! neighbours list
     type(engStressType), allocatable  :: engStress(:) ! energy and stress per particle
+    type(pot_holder),allocatable      :: pots(:)
     real(rp)                          :: ke
     real(rp)                          :: eng
     real(rp)                          :: engPair
@@ -104,10 +104,11 @@ contains
     if (allocated(ps%mass)) deallocate (ps%mass)
     if (allocated(ps%charge)) deallocate (ps%charge)
     if (allocated(ps%colour)) deallocate (ps%colour)
-    do i = 1, size(ps%vdw)
-      if (allocated(ps%vdw(i)%param)) deallocate (ps%vdw(i)%param)
+    if (allocated(ps%pots)) deallocate (ps%pots)
+    do i = 1, size(ps%pots)
+      if (allocated(ps%pots(i)%h)) deallocate (ps%pots(i)%h)
     enddo
-    if (allocated(ps%vdw)) deallocate (ps%vdw)
+    if (allocated(ps%pots)) deallocate (ps%pots)
     do i = 1, size(ps%neigh)
       if (allocated(ps%neigh(i)%list)) deallocate (ps%neigh(i)%list)
     enddo
@@ -221,9 +222,8 @@ contains
     enddo
     write (io%uout, '(a)') "Two body interactions:"
     write (io%uout, '(a8,a8,a5,a21,a36)') " A|", "B|", repeat(" ", 5), "Potential|", "Params|"
-    do i = 1, size(ps%vdw)
-      write (io%uout, '(a8,a8,a5,a24,1x,4(g11.4,1x))') ps%species(ps%vdw(i)%i), ps%species(ps%vdw(i)%j), &
-        trim(ps%vdw(i)%pot), trim(ps%vdw(i)%fpot), ps%vdw(i)%param(1:ps%vdw(i)%np)
+    do i = 1, size(ps%pots)
+      write (io%uout, '(a8,a8,a5,a24,1x,4(g11.4,1x))') ps%species(ps%pots(i)%h%i), ps%species(ps%pots(i)%h%j)
     enddo
     write (io%uout, '(a,f16.8)') "Mass: ", ps%getMass()
     write (io%uout, '(a,f16.8)') "Density(ρ): ", ps%m / ps%Vol
@@ -256,7 +256,7 @@ contains
     allocate (ps%mass(ps%nSpecies))
     allocate (ps%charge(ps%nSpecies))
     allocate (ps%colour(ps%nSpecies))
-    allocate (ps%vdw(ps%nSpecies * (ps%nSpecies + 1) / 2))
+    allocate (ps%pots(ps%nSpecies * (ps%nSpecies + 1) / 2))
     ps%species = stmp(1:ns)
     ps%isp = istmp(1:ns)
     deallocate (stmp, istmp)
