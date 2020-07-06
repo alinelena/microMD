@@ -1,0 +1,10 @@
+title some crap
+units kj
+
+block species
+Ar  39.948 0.0  1.0
+endblock species
+
+block pairs
+Ar Ar lj 119.8 3.405 
+endblock pairs
