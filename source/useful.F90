@@ -46,7 +46,9 @@ contains
   subroutine compilerInfo(io)
     integer, intent(inout) :: io
 
-    character(len=k_ml*10) :: copt = compiler_options()
+    character(len=k_ml*10) :: copt
+
+    copt = compiler_options()
 
     write (io, '(5a)') 'This file was compiled by ', &
       compiler_version(), ' using the options ', trim(copt)
@@ -197,32 +199,33 @@ contains
   end function hs
 
   subroutine init_random(is)
-    integer, intent(in) :: is
-  integer(kind=4), allocatable :: seed(:)
-  integer :: i,p
+    integer, intent(in)    :: is
 
-  call random_seed(size=p)
-  allocate(seed(p))
-  seed = 17*[(i-is,i=1,p)]
-  call random_seed(put=seed)
-  deallocate(seed)
+    integer                      :: i, p
+    integer(kind=4), allocatable :: seed(:)
+
+    call random_seed(size=p)
+    allocate (seed(p))
+    seed = 17*[(i - is, i=1, p)]
+    call random_seed(put=seed)
+    deallocate (seed)
 
   end subroutine init_random
 
   subroutine gaussian(x)
     real(kind=rp), intent(inout) :: x(:)
 
-   integer :: i,n
-   real(kind=rp)  :: r(2)
-   n = size(x)
+    integer       :: i, n
+    real(kind=rp) :: r(2)
 
-   do i=1,n,2
-     call random_number(r)
-     x(i) = sqrt(-2.0*log(r(1)))*cos(tpi*r(2))
-     if (i == n) exit
-     x(i+1) = sqrt(-2.0*log(r(1)))*sin(tpi*r(2))
-   end do
+    n = size(x)
+
+    do i = 1, n, 2
+      call random_number(r)
+      x(i) = sqrt(-2.0 * log(r(1))) * cos(tpi * r(2))
+      if (i == n) exit
+      x(i + 1) = sqrt(-2.0 * log(r(1))) * sin(tpi * r(2))
+    end do
   end subroutine gaussian
-
 
 end module m_Useful
