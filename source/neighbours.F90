@@ -25,12 +25,13 @@ contains
     real(rp), intent(in)               :: rc
 
     integer  :: i, j
-    real(rp) :: r2, rc2, rij(3), si(3)
+    real(rp) :: r2, rc2, rij(3), si(3),r(3)
     integer  :: mn(ps%nGParticles)
 
     rc2 = rc**2
     do i = 1, ps%nGParticles - 1
-      si = hs(ps%hi, [ps%x(i), ps%y(i), ps%z(i)])
+      r = [ps%x(i), ps%y(i), ps%z(i)]
+      si = hs(ps%hi, r)
       do j = i + 1, ps%nGParticles
         rij = ps%mic(j, si)
         r2 = sum(rij * rij)

@@ -20,7 +20,7 @@ program microMD
   use m_particles,  only: particlesType
   use m_sampler,    only: nve_update_position,&
                           nve_update_velocity
-
+  use timer, only : timer_type,start_timer, stop_timer,init_timer_system,timer_report
   implicit none
 
   character(len=k_ml) :: dummy
@@ -30,6 +30,7 @@ program microMD
   type(ioType)        :: io
   type(controlType)   :: control
   type(particlesType) :: particles
+  type(timer_type) :: tmr
 
   call DateAndTime(dt, tm)
   write (dummy, '(a,a,a,a)') "Program µMD has started at ", dt, " ", tm
@@ -37,6 +38,7 @@ program microMD
     call get_command_argument(1, io%controlFile)
   end if
   call readControl(io, control)
+  call init_timer_system(tmr, io%uout,3)
   call compilerInfo(io%uout)
   write (io%uout, '(a)') trim(dummy)
   call init_random(control%seed)
@@ -71,7 +73,9 @@ program microMD
       control%step = control%step + 1
       call nve_update_velocity(particles, control%timestep)
       call nve_update_position(particles, control%timestep)
+      call start_timer(tmr, 'short range')
       call computeForces(particles, control)
+      call stop_timer(tmr, 'short range')
       call nve_update_velocity(particles, control%timestep)
       if ( (t==1) .or.(mod(t,control%freq) == 0) ) then
         call particles%energy()
@@ -82,6 +86,7 @@ program microMD
         call particles%writeTrajectory(io, control%step, control%time, control%timestep, isFirst=.false., level=2)
       endif
     enddo
+    call timer_report(tmr)
   end block
   call closeIO(io)
   call DateAndTime(dt, tm)

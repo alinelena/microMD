@@ -35,7 +35,8 @@ contains
     !call ewaldForces(ps)
     do i = 1, ps%nGParticles
       is = ps%spec(i)
-      si = hs(ps%hi, [ps%x(i), ps%y(i), ps%z(i)])
+      r = [ps%x(i), ps%y(i), ps%z(i)]
+      si = hs(ps%hi, r)
       eng = 0.0_rp
       f = 0.0_rp
       do l = 1, ps%neigh(i)%n

@@ -190,9 +190,10 @@ contains
     real(rp), intent(in)    :: si(3)
     real(rp), dimension(3)  :: mic
 
-    real(rp) :: sij(3), sj(3)
+    real(rp) :: sij(3), sj(3),t(3)
 
-    sj = hs(ps%hi, [ps%x(j), ps%y(j), ps%z(j)])
+    t = [ps%x(j), ps%y(j), ps%z(j)]
+    sj = hs(ps%hi, t)
     sij = si - sj
     sij = sij - nint(sij)
     mic = hs(ps%h, sij)

@@ -1,5 +1,5 @@
 
-set(microMD_SRCS 
+set(microMD_SRCS
 microMD.F90
 useful.F90
 types.F90
@@ -15,6 +15,7 @@ particles.F90
 forces.F90
 sampler.F90
 units.F90
+timer.F90
 )
 
 if(BUILDER)
