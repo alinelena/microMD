@@ -26,7 +26,7 @@ contains
     type(controlType), intent(in)      :: control
 
     integer  :: i, is, j, js, k, l
-    real(rp) :: eng, f(3), ir, r2, U,rdU, rij(3), si(3)
+    real(rp) :: eng, f(3), ir, r2, U,rdU, rij(3), si(3), r(3)
 
     ps%fx = 0.0_rp
     ps%fy = 0.0_rp
