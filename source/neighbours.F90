@@ -30,6 +30,7 @@ contains
 
     rc2 = rc**2
     do i = 1, ps%nGParticles - 1
+      ps%neigh(i)%n = 0
       r = [ps%x(i), ps%y(i), ps%z(i)]
       si = hs(ps%hi, r)
       do j = i + 1, ps%nGParticles
