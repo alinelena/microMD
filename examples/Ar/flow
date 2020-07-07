@@ -1,14 +1,17 @@
 title "stupid test"
 
-output ar.output
-config ar.config
+output ar-ref.output
+config Ar50k.config
 
-field ar.field
+timestep 0.001
+steps 1
+temperature 4.2
+field ar.ff
 
 rcut 8.5
 healing 1.0
 
-trajectory
-trajname history
+#trajectory
+#trajname history
 
 finish
