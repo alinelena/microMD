@@ -21,7 +21,7 @@ contains
     type(controlType), intent(in)      :: control
 
     integer  :: i, is, j, js, k, l
-    real(rp) :: eng, f(3), ir, r2, rdU, rij(3), si(3), U
+    real(rp) :: eng, r(3), f(3), ir, r2, rdU, rij(3), si(3), U
 
     ps%fx = 0.0_rp
     ps%fy = 0.0_rp
@@ -30,7 +30,8 @@ contains
     !call ewaldForces(ps)
     do i = 1, ps%nGParticles
       is = ps%spec(i)
-      si = hs(ps%hi, [ps%x(i), ps%y(i), ps%z(i)])
+      r = [ps%x(i), ps%y(i), ps%z(i)]
+      si = hs(ps%hi, r)
       eng = 0.0_rp
       f = 0.0_rp
       do l = 1, ps%neigh(i)%n

@@ -21,6 +21,7 @@ endif(COMMAND cmake_policy)
 include(BuildOptions)
 include(GNUInstallDirs)
 include(FeatureSummary)
+include(flags)
 
 if(WITH_OPENMP)
    find_package(OpenMP REQUIRED)

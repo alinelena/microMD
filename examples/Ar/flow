@@ -1,7 +1,7 @@
 title "stupid test"
 
 output ar-ref.output
-config Ar50k.config
+config ar.config
 
 timestep 0.001
 steps 1
