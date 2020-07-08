@@ -56,6 +56,7 @@ module m_potentials
 
   type, extends(interaction), public :: ljse
     real(rp) :: sig, eps
+    real(rp) :: sig2
   contains
     procedure :: init => ljse_init
     procedure :: pot => ljse_i
@@ -72,6 +73,7 @@ module m_potentials
 
   type, extends(interaction), public :: ljsec
     real(rp) :: sig, eps, c
+    real(rp) :: sig2
   contains
     procedure :: init => ljsec_init
     procedure :: pot => ljsec_i
@@ -79,7 +81,8 @@ module m_potentials
   end type
 
   type, extends(interaction), public :: ljf
-    real(rp) :: sig, eps, rcut2
+    real(rp) :: sig, eps, rc
+    real(rp) :: sig2, ea, rc2
   contains
     procedure :: init => ljf_init
     procedure :: pot => ljf_i
@@ -88,6 +91,7 @@ module m_potentials
 
   type, extends(interaction), public :: ljs
     real(rp) :: sig, eps, rc, l
+    real(rp) :: sig2
   contains
     procedure :: init => ljs_init
     procedure :: pot => ljs_i
@@ -103,6 +107,7 @@ contains
 
     t%eps = p(1)
     t%sig = p(2)
+    t%sig2 = p(2)*p(2)
     t%i = i
     t%j = j
     t%id = id
@@ -115,7 +120,7 @@ contains
 
     real(rp) :: s12, s6
 
-    s6 = t%sig * t%sig / r2; s6 = s6 * s6 * s6
+    s6 = t%sig2 / r2; s6 = s6 * s6 * s6
     s12 = s6 * s6
     U = 4.0_rp * t%eps * (s12 - s6)
     rdU = 48.0_rp * t%eps * (s12 - 0.5_rp * s6)
@@ -139,6 +144,7 @@ contains
 
     t%eps = p(1)
     t%sig = p(2)
+    t%sig2 = p(2)*p(2)
     t%c = p(3)
     t%i = i
     t%j = j
@@ -152,7 +158,7 @@ contains
 
     real(rp) :: s12, s6
 
-    s6 = t%sig * t%sig / r2; s6 = s6 * s6 * s6
+    s6 = t%sig2 / r2; s6 = s6 * s6 * s6
     s12 = s6 * s6
     U = 4.0_rp * t%eps * (s12 - t%c * s6)
     rdU = 48.0_rp * t%eps * (s12 - 0.5_rp * t%c * s6)
@@ -176,10 +182,13 @@ contains
 
     real(rp) :: x
 
-    t%sig = p(2) * p(2)
-    t%rcut2 = p(3) * p(3)
-    x = (t%rcut2 / t%sig)
-    t%eps = p(1) * 2.0_rp * x * (1.5_rp / (x - 1.0_rp))**3
+    t%eps = p(1)
+    t%sig = p(2)
+    t%sig2 = p(2) * p(2)
+    t%rc =  p(3)
+    t%rc2 = p(3) * p(3)
+    x = (t%rc2 / t%sig2)
+    t%ea = p(1) * 2.0_rp * x * (1.5_rp / (x - 1.0_rp))**3
     t%i = i
     t%j = j
     t%id = id
@@ -192,15 +201,15 @@ contains
 
     real(rp) :: ir, rct, st
 
-    if (r2 > t%rcut2) then
+    if (r2 > t%rc2) then
       U = 0.0_rp
       rdU = 0.0_rp
     else
       ir = 1.0_rp / r2
-      st = t%sig * t%sig * ir
-      rct = t%rcut2 * ir
-      U = t%eps * (st - 1.0_rp) * (rct - 1.0_rp)**2
-      rdU = 4.0_rp * t%eps * rct * (rct - 1.0_rp) * (st - 1.0_rp) + 2.0_rp * t%eps * (rct - 1.0_rp)**2 * st
+      st =  t%sig2 * ir
+      rct = t%rc2 * ir
+      U = t%ea * (st - 1.0_rp) * (rct - 1.0_rp)**2
+      rdU = 4.0_rp * t%ea * rct * (rct - 1.0_rp) * (st - 1.0_rp) + 2.0_rp * t%ea * (rct - 1.0_rp)**2 * st
     end if
   end subroutine ljf_i
 
@@ -275,6 +284,7 @@ contains
     t%eps = p(1)
 
     t%sig = p(2)
+    t%sig2 = p(2)*p(2)
     t%rc = p(3)
     t%l = p(4)
     t%i = i
@@ -289,7 +299,7 @@ contains
 
     real(rp) :: s6
 
-    s6 = t%sig * t%sig / r2; s6 = s6 * s6 * s6
+    s6 = t%sig2 / r2; s6 = s6 * s6 * s6
     U = 4.0_rp * t%eps * (s6 * s6 - s6) * Sr(sqrt(r2), t%rc, t%l)
     rdU = 0.0_rp
   end subroutine ljs_i
